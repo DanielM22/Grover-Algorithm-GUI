@@ -1,3 +1,12 @@
+/*
+This is a code (in process) for a GUI
+made in ROOT for the Grover's Algorithm
+learning.
+
+Daniel Mauricio Martin Rojas
+Julián Adnrés Salamanca Bernal
+*/
+
 #include <TGClient.h>
 #include <TCanvas.h>
 #include <TF1.h>
