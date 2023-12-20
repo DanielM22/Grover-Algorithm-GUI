@@ -1,12 +1,3 @@
-/*
-This is a code (in process) for a GUI
-made in ROOT for the Grover's Algorithm
-learning.
-
-Daniel Mauricio Martin Rojas
-Julián Adnrés Salamanca Bernal
-*/
-
 #include <TGClient.h>
 #include <TCanvas.h>
 #include <TF1.h>
@@ -40,7 +31,7 @@ class MyMainFrame{
   TLine               *Circuit1, *Circuit2, *Axis1, *Axis2, *Axis3;
   TLatex               latex;
   TArrow              *ar2;
-  TPaveText           *HGate, *HGate2, *Steps;
+  TPaveText           *HGate, *HGate2, *Steps, *UfGate, *UfGate2, *DifGate, *DifGate2;
   TColor              *GateColor = gROOT->GetColor(20);
   TCanvas             *fCanvas;
 
@@ -54,6 +45,7 @@ public:
   //virtual ~MyMainFrame();
   void DoDraw();
   void Step1();
+  void Oracle();
 };
 
 MyMainFrame::MyMainFrame(const TGWindow *p,UInt_t w,UInt_t h) {
@@ -103,6 +95,7 @@ MyMainFrame::MyMainFrame(const TGWindow *p,UInt_t w,UInt_t h) {
    TGIcon *IconUD= new TGIcon(HFrame3, "pictures/LogoUD1.png");
    TGIcon *IFisinfor = new TGIcon(HFrame3, "pictures/logo_fisinfor.png");
 
+
    GFrame1->AddFrame(NEntry1,Centrar);
    GFrame2->AddFrame(NEntry2,Centrar);
 
@@ -138,6 +131,7 @@ MyMainFrame::MyMainFrame(const TGWindow *p,UInt_t w,UInt_t h) {
    t->SetTextColor(kRed+2);
    t->SetTextFont(22);
    t->SetTextSize(0.05);
+   //t->SetTextAngle(45);
    t->Draw();
    
 
@@ -207,140 +201,144 @@ MyMainFrame::MyMainFrame(const TGWindow *p,UInt_t w,UInt_t h) {
 }
 
 void MyMainFrame::DoDraw() {
-   
-   fCanvas = MCanvas->GetCanvas();
-   fCanvas->Clear();
-   fCanvas->Update();
-   fCanvas->Divide(2,2);
-   
-   gSystem->Load("LibGeom");
-   TSPHE *Bsphe1 = new TSPHE("BSPHE1","BSPHE1","Iron",0,100, 0,180, 0,360);
-   Bsphe1->SetLineColor(kGray);
-   TNode *node1 = new TNode("NODE1","NODE1","BSPHE1",10, 250,300);
+  
+  next->Connect("Clicked()","MyMainFrame",this,"Step1()");
+  
+  fCanvas = MCanvas->GetCanvas();
+  fCanvas->Clear();
+  fCanvas->Update();
+  fCanvas->Divide(2,2);
+  
+  gSystem->Load("LibGeom");
+  TSPHE *Bsphe1 = new TSPHE("BSPHE1","BSPHE1","Iron",0,100, 0,180, 0,360);
+  Bsphe1->SetLineColor(kGray);
+  //TSPHE *Bsphe2 = new TSPHE("BSPHE2","BSPHE2","Iron",0,100, 0,180, 0,360);
+  //Bsphe2->SetLineColor(kGray);
+  TNode *node1 = new TNode("NODE1","NODE1","BSPHE1",10, 250,300);
+  //TNode *node2 = new TNode("NODE2","NODE2","BSPHE2",250, 0,0);
+  
+  //TButton1->SetState(kButtonDisabled, kTRUE);
+  NEntry1->SetState(kFALSE);
+  NEntry2->SetState(kFALSE);
+  
+  TText *C = new TText(0.5,0.9,"Circuit");
+  C->SetTextAlign(22);
+  C->SetTextColor(kBlue+2);
+  C->SetTextFont(22);
+  C->SetTextSize(0.07);
+  
+  TText *BS = new TText(-0.7,0.9, "Bloch Sphere");
+  BS->SetTextAlign(22);
+  BS->SetTextColor(kBlue+2);
+  BS->SetTextFont(22);
+  BS->SetTextSize(0.07);
+  
+  
+  N = NEntry1->GetNumber();
+  k = NEntry2->GetNumber();
+  n = ceil(log2(N));
+  
+  len = pow(2,n);
+  
+  s[len];
 
-   NEntry1->SetState(kFALSE);
-   NEntry2->SetState(kFALSE);
-   
-   TText *C = new TText(0.5,0.9,"Circuit");
-   C->SetTextAlign(22);
-   C->SetTextColor(kBlue+2);
-   C->SetTextFont(22);
-   C->SetTextSize(0.07);
-   
-   TText *BS = new TText(-0.7,0.9, "Bloch Sphere");
-   BS->SetTextAlign(22);
-   BS->SetTextColor(kBlue+2);
-   BS->SetTextFont(22);
-   BS->SetTextSize(0.07);
-   
+  for(int i; i<=len; i++){
+    
+    s[i]=i+1;
+    cout<<s[i]<<endl;
+  }
+  double ms[len];
+  ms[0]=1;
+  
+  TMatrixT<double> State(len,1,s);
+  //State.Print();
+  PEstados = new TGraph(N,s,ms);
+  PEstados->SetFillColor(40);
+  PEstados->SetTitle("States Probability");
+  
+  Steps = new TPaveText(0.2,0.1,0.8,0.9);
+  Steps->SetTextAlign(22);
+  Steps->SetShadowColor(0);
+  Steps->SetFillColor(0);
+  Steps->SetLineColor(0);
+  Steps->SetTextSize(0.05);
+  Steps->AddText("Initialize the n qubits to state |0#GT");((TText*)Steps->GetListOfLines()->Last())->SetTextColor(kOrange+1);
+  Steps->AddText("Apply Hadamard Gate over the n qubits:");
+  Steps->AddText("H^{#otimesn}|0#GT^{#otimesn}");
+  Steps->AddText("Apply a sign shift with the oracle U_{f} ");
+  Steps->AddText("Apply the Diffusion transform D");
+  Steps->AddText("Measure the states (qubits)");
 
-   N = NEntry1->GetNumber();
-   k = NEntry2->GetNumber();
-   n = ceil(log2(N));
-   
-   len = pow(2,n);
-
-   s[len];
-
-   for(int i; i<=len; i++){
-
-     s[i]=i+1;
-     cout<<s[i]<<endl;
-   }
-   double ms[len];
-   ms[0]=1;
-
-   TMatrixT<double> State(len,1,s);
-   //State.Print();
-   PEstados = new TGraph(N,s,ms);
-   PEstados->SetFillColor(40);
-   PEstados->SetTitle("States Probability");
-   
-   Steps = new TPaveText(0.2,0.1,0.8,0.9);
-   Steps->SetTextAlign(22);
-   Steps->SetShadowColor(0);
-   Steps->SetFillColor(0);
-   Steps->SetLineColor(0);
-   Steps->SetTextSize(0.05);
-   Steps->AddText("Initialize the n qubits to state |0#GT");((TText*)Steps->GetListOfLines()->Last())->SetTextColor(kOrange+1);
-   Steps->AddText("Apply Hadamard Gate over the n qubits:");
-   Steps->AddText("H^{#otimesn}|0#GT^{#otimesn}");
-   Steps->AddText("Apply a sign shift with the oracle U_{f} ");
-   Steps->AddText("Apply the Diffusion transform D");
-   Steps->AddText("Measure the states (qubits)");
-
-   double R = round(sqrt(N)*TMath::Pi()/4.);
-   RValue->SetNumber(R);
-   
-   if(k>N){
-     cout<<"Number of Elements must be greater than Search Element"<<endl;
-   }
-
-   switch(n){
-   case 2:
-     fCanvas->cd(1);
+  double R = round(sqrt(N)*TMath::Pi()/4.);
+  RValue->SetNumber(R);
+  
+  if(k>N){
+    cout<<"Number of Elements must be greater than Search Element"<<endl;
+  }
+  
+  switch(n){
+  case 2:
+    fCanvas->cd(1);
+    
+    Circuit1 = new TLine(0.06,0.7,0.8,0.7);
+    Circuit2 = new TLine(0.06,0.3,0.8,0.3);
+    
+    latex.SetTextSize(0.05);
+    latex.DrawLatex(0.02,0.685,"|0#GT");
+    latex.DrawLatex(0.02,0.285,"|0#GT");
+    
+    C->Draw();
+    
+    Circuit1->Draw();
+    Circuit2->Draw();
+    
+    fCanvas->cd(2);
+    
+    Steps->Draw();
+    
+    fCanvas->cd(3);
+    node1->Draw();
+    
+    BS->Draw();
+    
+    Axis1 = new TLine(0.0,0.0,0.0,0.9);
+    Axis2 = new TLine(0.0,0.0,0.5,0);
+    Axis3 = new TLine(0,0,-0.316,-0.589);
+    
+    latex.SetTextSize(0.06);
+    latex.DrawLatex(0.01,0.9,"|0#GT");
+    latex.DrawLatex(0.01,-0.9,"|1#GT");
+    latex.DrawLatex(-0.40,-0.56,"|+#GT");
+    latex.DrawLatex(0.32,0.48,"|-#GT");
+    
+    ar2 = new TArrow(0.0,0.0,0.0,0.75,0.015,"|>");
+    ar2->SetFillColor(2);
+    ar2->SetLineColor(2);
+    ar2->SetAngle(45);
+    ar2->Draw();
+    
+    Axis1->Draw();
+    Axis2->Draw();
+    Axis3->Draw();
+    
+    fCanvas->cd(4);
+    
+    fCanvas->SetTitle("Circuit");
+    PEstados->Draw("AB");
      
-     Circuit1 = new TLine(0.06,0.7,0.8,0.7);
-     Circuit2 = new TLine(0.06,0.3,0.8,0.3);
-
-     latex.SetTextSize(0.05);
-     latex.DrawLatex(0.02,0.685,"|0#GT");
-     latex.DrawLatex(0.02,0.285,"|0#GT");
-
-     C->Draw();
-
-     Circuit1->Draw();
-     Circuit2->Draw();
-
-     fCanvas->cd(2);
-     
-     Steps->Draw();
-     
-     fCanvas->cd(3);
-     node1->Draw();
-
-     BS->Draw();
-     
-     Axis1 = new TLine(0.0,0.0,0.0,0.9);
-     Axis2 = new TLine(0.0,0.0,0.5,0);
-     Axis3 = new TLine(0,0,-0.316,-0.589);
-
-     latex.SetTextSize(0.06);
-     latex.DrawLatex(0.01,0.9,"|0#GT");
-     latex.DrawLatex(0.01,-0.9,"|1#GT");
-     latex.DrawLatex(-0.40,-0.56,"|+#GT");
-     latex.DrawLatex(0.32,0.48,"|-#GT");
-
-     ar2 = new TArrow(0.0,0.0,0.0,0.75,0.015,"|>");
-     ar2->SetFillColor(2);
-     ar2->SetLineColor(2);
-     ar2->SetAngle(45);
-     ar2->Draw();
-     
-     Axis1->Draw();
-     Axis2->Draw();
-     Axis3->Draw();
-
-     fCanvas->cd(4);
-     
-     fCanvas->SetTitle("Circuit");
-     PEstados->Draw("AB");
-     
-     fCanvas->Update();
-     
-     break;
-   case 3:
-     cout << "Three Qubits"<<endl;
-     break;
-   case 4:
-     cout << "Four Qubits"<<endl;
-     break;
-   case (5):
-     cout << ">Four Qubits"<<endl;
-     break;
-   }
-
-   next->Connect("Clicked()","MyMainFrame",this,"Step1()");
+    fCanvas->Update();
+    
+    break;
+  case 3:
+    cout << "Three Qubits"<<endl;
+    break;
+  case 4:
+    cout << "Four Qubits"<<endl;
+    break;
+  case (5):
+    cout << ">Four Qubits"<<endl;
+    break;
+  }
 }
 //DoDraw End
 
@@ -349,7 +347,7 @@ void MyMainFrame::DoDraw() {
 // Step 1 Begin
 
 void MyMainFrame::Step1(){
-
+  
   fCanvas->Clear();
   fCanvas->Update();
   fCanvas->Divide(2,2);
@@ -377,30 +375,6 @@ void MyMainFrame::Step1(){
   //int n = ceil(log2(N));
   
   //int len = pow(2,n);
-
-  
-  double uf[len*len];
-  
-  for(int i; i<=(len*len); i++){
-    uf[i]=0.0;
-    
-    cout<<uf[0]<<endl;
-  }
-  
-  for(int i=1; i<=len; i++){
-    
-     int x = (i-1)+(len*(i-1)); 
-     
-     uf[x]=1;
-     
-  }
-  
-  int s_e = (k-1)+(len*(k-1));
-  
-  uf[s_e]=-1;
-
-  TMatrixT<double> Uf(len,len,uf);
-  Uf.Print();
   
   double dif[len*len];
   
@@ -527,10 +501,145 @@ void MyMainFrame::Step1(){
      cout << ">Four Qubits"<<endl;
      break;
    }
+
+   next->Connect("Clicked()","MyMainFrame",this,"Oracle()");
+   previous->Connect("Clicked()","MyMainFrame",this,"DoDraw()");
+}
+// End Step 1
+
+//..............................................................................
+
+//Begin Oracle
+
+void MyMainFrame::Oracle(){
+  
+  //fCanvas->Clear();
+  fCanvas->Update();
+  //fCanvas->Divide(2,2);
+  GateColor->SetRGB(0.22,0.33,0.61);
+  
+  TText *C = new TText(0.5,0.9,"Circuit");
+  C->SetTextAlign(22);
+  C->SetTextColor(kBlue+2);
+  C->SetTextFont(22);
+  C->SetTextSize(0.07);
+  
+  TText *BS = new TText(-0.7,0.9, "Bloch Sphere");
+  BS->SetTextAlign(22);
+  BS->SetTextColor(kBlue+2);
+  BS->SetTextFont(22);
+  BS->SetTextSize(0.07);
+  
+  double uf[len*len];
+  
+  for(int i; i<=(len*len); i++){
+    uf[i]=0.0;
+    
+    cout<<uf[0]<<endl;
+  }
+  
+  for(int i=1; i<=len; i++){
+    
+    int x = (i-1)+(len*(i-1)); 
+    
+    uf[x]=1;
+    
+  }
+  
+  int s_e = (k-1)+(len*(k-1));
+  
+  uf[s_e]=-1;
+  
+  TMatrixT<double> Uf(len,len,uf);
+  Uf.Print();
+
+  Steps = new TPaveText(0.2,0.1,0.8,0.9);
+  Steps->SetTextAlign(22);
+  Steps->SetShadowColor(0);
+  Steps->SetFillColor(0);
+  Steps->SetLineColor(0);
+  Steps->SetTextSize(0.05);
+  Steps->AddText("Initialize the n qubits to state |0#GT"); 
+  Steps->AddText("Apply Hadamard Gate over the n qubits:");
+  Steps->AddText("H^{#otimesn}|0#GT^{#otimesn}");
+  Steps->AddText("Apply a sign shift with the oracle U_{f} ");((TText*)Steps->GetListOfLines()->Last())->SetTextColor(kOrange+1);
+  Steps->AddText("Apply the Diffusion transform D");
+  Steps->AddText("Measure the states (qubits)");
+  
+  switch(n){
+  case 2:
+    fCanvas->cd(1);
+    
+    UfGate = new TPaveText(0.22,0.624,0.30,0.774);
+    UfGate->SetTextAlign(22);
+    UfGate->SetShadowColor(0);
+    UfGate->SetTextFont(11);
+    UfGate->SetTextSize(0.07);
+    UfGate->SetFillColor(20);
+    UfGate->AddText("Uf");
+    
+    UfGate2 = new TPaveText(0.22,0.224,0.30,0.374);
+    UfGate2->SetTextAlign(22);
+    UfGate2->SetShadowColor(0);
+    UfGate2->SetTextFont(11);
+    UfGate2->SetTextSize(0.07);
+    UfGate2->SetFillColor(20);
+    UfGate2->AddText("Uf");
+    
+    UfGate->Draw();
+    UfGate2->Draw();
+    
+    fCanvas->cd(2);
+    
+    Steps->Draw();
+    
+    fCanvas->cd(3);
+    //node1->Draw();
+    BS->Draw();
+    
+    Axis1 = new TLine(0.0,0.0,0.0,0.9);
+    Axis2 = new TLine(0.0,0.0,0.5,0);
+    Axis3 = new TLine(0,0,-0.316,-0.589);
+    
+    latex.SetTextSize(0.06);
+    latex.DrawLatex(0.01,0.9,"|0#GT");
+    latex.DrawLatex(0.01,-0.9,"|1#GT");
+    latex.DrawLatex(-0.40,-0.56,"|+#GT");
+    latex.DrawLatex(0.32,0.48,"|-#GT");
+    
+    ar2 = new TArrow(0.0,0.0,-0.271,-0.505,0.015,"|>");
+    ar2->SetFillColor(2);
+    ar2->SetLineColor(2);
+    ar2->SetAngle(45);
+    ar2->Draw();
+    
+    Axis1->Draw();
+    Axis2->Draw();
+    Axis3->Draw();
+    
+    fCanvas->cd(4);
+    
+    PEstados->Draw("AB");
+    
+    fCanvas->Update();
+    
+    break;
+  case 3:
+    cout << "Three Qubits"<<endl;
+    break;
+  case 4:
+    cout << "Four Qubits"<<endl;
+    break;
+  case (5):
+    cout << ">Four Qubits"<<endl;
+    break;
+  }
+
+  previous->Connect("Clicked()","MyMainFrame",this,"Step1()");
 }
 
-
-GroverGUI() {
-   // Popup the GUI...
-   new MyMainFrame(gClient->GetRoot(),800,450);
+void interface_test() {
+  // Popup the GUI...
+  new MyMainFrame(gClient->GetRoot(),800,450);
 }
+
