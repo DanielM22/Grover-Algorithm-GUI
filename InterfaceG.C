@@ -1,7 +1,7 @@
 /*This is an Graphical User Interface
 for the Grover's Algorithm Learning,
 this GUI is still in building process.
-Author: Daniel Martin. */
+Authors: Daniel Martin. Julián Salamanca */
 
 
 #include <TGClient.h>
@@ -17,7 +17,7 @@ Author: Daniel Martin. */
 #include "TGeoManager.h"
 #include "TGeometry.h"
 #include "TGTab.h"
-
+#include <TTimer.h>
 #include <iostream>
 #include <cmath>
 #include <vector>
@@ -35,17 +35,17 @@ class MyMainFrame{
   TGNumberEntry       *NEntry1, *NEntry2, *RValue;
   TGLabel             *Label1, *Label2, *Label3;
   TGGroupFrame        *GFrame1, *GFrame2, *GFrame3;
-  TGraph              *PEstados;
-  
+  TGraph              *PEstados;  
   TLine               *Circuit1, *Circuit2, *Circuit3, *Circuit4, *Axis1, *Axis2, *SepLine;
   TLatex               latex;
   TArrow              *SVector;
   TPaveText           *HGate, *HGate2, *HGate3, *HGate4, *Steps, *UfGate, *UfGate2, *UfGate3, *UfGate4, *DifGate, *DifGate2, *DifGate3, *DifGate4;
   TColor              *GateColor = gROOT->GetColor(20);
   TCanvas             *fCanvas;
+  TTimer              *Chrono;
   
-  double *M_state;
-  int n, len, N, k;
+  double *M_state, R;
+  int n, len, N, k, r, half;
   double ms[];
   
   
@@ -59,6 +59,8 @@ class MyMainFrame{
   void GateConstruct();
   void Algorithm();
   void RDefinition();
+  void Repeat();
+  void AnimR();
 };
 
 MyMainFrame::MyMainFrame(const TGWindow *p,UInt_t w,UInt_t h) {
@@ -84,9 +86,7 @@ MyMainFrame::MyMainFrame(const TGWindow *p,UInt_t w,UInt_t h) {
 
    MCanvas = new TRootEmbeddedCanvas("Lienzo",HFrame1,w,h);
 
-   //GFrame1 = new TGGroupFrame(VFrame2,"Number of Elements");
    GFrame1 = new TGGroupFrame(SimulF,"Number of Elements");
-   //GFrame2 = new TGGroupFrame(VFrame2, "Search Element");
    GFrame2 = new TGGroupFrame(SimulF, "Search Element");
 
    TButton1 = new TGTextButton (HFrame2, "Start");
@@ -103,18 +103,14 @@ MyMainFrame::MyMainFrame(const TGWindow *p,UInt_t w,UInt_t h) {
    RVal = new TGTextButton(ConceptF, "R Value");
    RVal->Connect("Clicked()", "MyMainFrame", this, "RDefinition()");
   
-   //Label2 = new TGLabel(VFrame2, "Number of Elements");
-   //Label1 = new TGLabel(VFrame2, "Search Element");
    NEntry1 = new TGNumberEntry(GFrame1);
    NEntry1->SetLimits(TGNumberFormat::kNELLimitMinMax,3,16);
    
    NEntry2 = new TGNumberEntry(GFrame2);
    NEntry2->SetLimits(TGNumberFormat::kNELLimitMinMax,1,16);
    
-   //Label3 = new TGLabel(VFrame2, "R Value:");
    Label3 = new TGLabel(SimulF, "R Value:");
 
-   //RValue = new TGNumberEntry(VFrame2);
    RValue = new TGNumberEntry(SimulF);
    RValue->SetState(kFALSE);
 
@@ -129,19 +125,9 @@ MyMainFrame::MyMainFrame(const TGWindow *p,UInt_t w,UInt_t h) {
    TGIcon *IconUD= new TGIcon(HFrame3, "pictures/LogoUD1.png");
    TGIcon *IFisinfor = new TGIcon(HFrame3, "pictures/logo_fisinfor.png");
 
-   /* VFrame2->AddFrame(Label2,CentrarX);
-   VFrame2->AddFrame(NEntry2,CentrarX);
-   VFrame2->AddFrame(Label1,Centrar);
-   VFrame2->AddFrame(NEntry1,Centrar);
-   VFrame2->AddFrame(Label3,CentrarX);*/
 
    GFrame1->AddFrame(NEntry1,Centrar);
    GFrame2->AddFrame(NEntry2,Centrar);
-
-   /*VFrame2->AddFrame(GFrame1,CentrarX);
-   VFrame2->AddFrame(GFrame2,CentrarX);
-   VFrame2->AddFrame(Label3,CentrarX);
-   VFrame2->AddFrame(RValue,CentrarX);*/
 
    SimulF->AddFrame(GFrame1,CentrarX);
    SimulF->AddFrame(GFrame2,CentrarX);
@@ -165,9 +151,7 @@ MyMainFrame::MyMainFrame(const TGWindow *p,UInt_t w,UInt_t h) {
    IconUD->Resize(70,80);
    
 
-   //HFrame1->AddFrame(VFrame2,ExpandirY);
    MainCFrame->AddFrame(SimulTab,ExpandirY);
-   //MainCFrame->AddFrame(BConceptsTab,ExpandirY);
 
    HFrame1->AddFrame(MainCFrame, ExpandirY);
    HFrame1->AddFrame(MCanvas, Expandir);
@@ -175,7 +159,6 @@ MyMainFrame::MyMainFrame(const TGWindow *p,UInt_t w,UInt_t h) {
    VFrame1->AddFrame(HFrame3,new TGLayoutHints(kLHintsRight, 2,2,0,0));
 
    MainF->AddFrame(HFrame1,Expandir);
-   //MainF->AddFrame(MCanvas,Expandir);
    MainF->AddFrame(VFrame1,ExpandirX);
 
    
@@ -184,7 +167,6 @@ MyMainFrame::MyMainFrame(const TGWindow *p,UInt_t w,UInt_t h) {
    t->SetTextColor(kRed+2);
    t->SetTextFont(22);
    t->SetTextSize(0.05);
-   //t->SetTextAngle(45);
    t->Draw();
    
 
@@ -267,7 +249,7 @@ void MyMainFrame::DoDraw() {
   NEntry1->SetState(kFALSE);
   NEntry2->SetState(kFALSE);
   
-  TText *C = new TText(0.5,0.9,"Circuit");
+  TText *C = new TText(0.5,0.95,"Circuit");
   C->SetTextAlign(22);
   C->SetTextColor(kBlue+2);
   C->SetTextFont(22);
@@ -322,7 +304,7 @@ void MyMainFrame::DoDraw() {
   Steps->AddText("Apply the Diffusion transform D");
   Steps->AddText("Measure the states (qubits)");
 
-  double R = round((sqrt(N)*TMath::Pi()/4.)-0.5);
+  R = round((sqrt(N)*TMath::Pi()/4.)-0.5);
   RValue->SetNumber(R);
   
   if(k>N){
@@ -354,7 +336,6 @@ void MyMainFrame::DoDraw() {
     
     Axis1 = new TLine(0.0,0.0,0.9,0.0);
     Axis2 = new TLine(0.0,-0.9,0.0,0.85);
-    //Axis3 = new TLine(0,0,-0.316,-0.589);
     
     latex.SetTextSize(0.06);
     latex.DrawLatex(-0.07,0.89,"|#beta#GT");
@@ -400,7 +381,6 @@ void MyMainFrame::DoDraw() {
     
     Axis1 = new TLine(0.0,0.0,0.9,0.0);
     Axis2 = new TLine(0.0,-0.9,0.0,0.85);
-    //Axis3 = new TLine(0,0,-0.316,-0.589);
     
     latex.SetTextSize(0.06);
     latex.DrawLatex(-0.07,0.89,"|#beta#GT");
@@ -448,7 +428,6 @@ void MyMainFrame::DoDraw() {
     
     Axis1 = new TLine(0.0,0.0,0.9,0.0);
     Axis2 = new TLine(0.0,-0.9,0.0,0.85);
-    //Axis3 = new TLine(0,0,-0.316,-0.589);
     
     latex.SetTextSize(0.06);
     latex.DrawLatex(-0.07,0.89,"|#beta#GT");
@@ -466,9 +445,6 @@ void MyMainFrame::DoDraw() {
      
     fCanvas->Update();
     break;
-  case (5):
-    cout << ">Four Qubits"<<endl;
-    break;
   }
 }
 //DoDraw End
@@ -484,7 +460,7 @@ void MyMainFrame::Step1(){
   fCanvas->Divide(2,2);
   GateColor->SetRGB(0.22,0.33,0.61);
 
-  TText *C = new TText(0.5,0.9,"Circuit");
+  TText *C = new TText(0.5,0.95,"Circuit");
   C->SetTextAlign(22);
   C->SetTextColor(kBlue+2);
   C->SetTextFont(22);
@@ -578,7 +554,6 @@ void MyMainFrame::Step1(){
     
     Axis1 = new TLine(0.0,0.0,0.9,0.0);
     Axis2 = new TLine(0.0,-0.9,0.0,0.85);
-    //Axis3 = new TLine(0,0,-0.316,-0.589);
     
     latex.SetTextSize(0.06);
     latex.DrawLatex(-0.07,0.89,"|#beta#GT");
@@ -652,7 +627,6 @@ void MyMainFrame::Step1(){
     
     Axis1 = new TLine(0.0,0.0,0.9,0.0);
     Axis2 = new TLine(0.0,-0.9,0.0,0.85);
-    //Axis3 = new TLine(0,0,-0.316,-0.589);
     
     latex.SetTextSize(0.06);
     latex.DrawLatex(-0.07,0.89,"|#beta#GT");
@@ -672,11 +646,90 @@ void MyMainFrame::Step1(){
     fCanvas->Update();
      break;
   case 4:
-    cout << "Four Qubits"<<endl;
+    fCanvas->cd(1);
+    
+    C->Draw();
+    
+    Circuit1 = new TLine(0.06,0.75,0.8,0.75);
+    Circuit2 = new TLine(0.06,0.55,0.8,0.55);
+    Circuit3 = new TLine(0.06,0.35,0.8,0.35);
+    Circuit4 = new TLine(0.06,0.15,0.8,0.15);
+    
+    latex.SetTextSize(0.05);
+    latex.DrawLatex(0.02,0.735,"|0#GT");
+    latex.DrawLatex(0.02,0.535,"|0#GT");
+    latex.DrawLatex(0.02,0.335,"|0#GT");
+    latex.DrawLatex(0.02,0.135,"|0#GT");
+    
+    HGate = new TPaveText(0.1,0.674,0.18,0.824);
+    HGate->SetTextAlign(22);
+    HGate->SetShadowColor(0);
+    HGate->SetTextFont(11);
+    HGate->SetTextSize(0.07);
+    HGate->SetFillColor(20);
+    HGate->AddText("H");
+    
+    HGate2 = new TPaveText(0.1,0.474,0.18,0.624);
+    HGate2->SetTextAlign(22);
+    HGate2->SetShadowColor(0);
+    HGate2->SetTextFont(11);
+    HGate2->SetTextSize(0.07);
+    HGate2->SetFillColor(20);
+    HGate2->AddText("H");
+
+    HGate3 = new TPaveText(0.1,0.274,0.18,0.424);
+    HGate3->SetTextAlign(22);
+    HGate3->SetShadowColor(0);
+    HGate3->SetTextFont(11);
+    HGate3->SetTextSize(0.07);
+    HGate3->SetFillColor(20);
+    HGate3->AddText("H");
+
+    HGate4 = new TPaveText(0.1,0.074,0.18,0.224);
+    HGate4->SetTextAlign(22);
+    HGate4->SetShadowColor(0);
+    HGate4->SetTextFont(11);
+    HGate4->SetTextSize(0.07);
+    HGate4->SetFillColor(20);
+    HGate4->AddText("H");
+
+    Circuit1->Draw();
+    Circuit2->Draw();
+    Circuit3->Draw();
+    Circuit4->Draw();
+
+    HGate->Draw();
+    HGate2->Draw();
+    HGate3->Draw();
+    HGate4->Draw();
+    
+    fCanvas->cd(2);
+    
+    Steps->Draw();
+    
+    fCanvas->cd(3)->Range(-1,-1,1,1);
+    
+    Axis1 = new TLine(0.0,0.0,0.9,0.0);
+    Axis2 = new TLine(0.0,-0.9,0.0,0.85);
+    //Axis3 = new TLine(0,0,-0.316,-0.589);
+    
+    latex.SetTextSize(0.06);
+    latex.DrawLatex(-0.07,0.89,"|#beta#GT");
+    latex.DrawLatex(0.92,-0.02,"|#alpha#GT");
+    latex.DrawLatex(xf,yf,"|#varphi#GT");
+    
+    Axis1->Draw();
+    Axis2->Draw();
+    BS->Draw();
+    SVector->Draw();
+    
+    fCanvas->cd(4);
+    
+    fCanvas->SetTitle("Circuit");
+    PEstados->Draw("AB");
+
+    fCanvas->Update();
      break;
-  case (5):
-    cout << ">Four Qubits"<<endl;
-    break;
   }
 
   next->Disconnect("Clicked()");
@@ -697,7 +750,7 @@ void MyMainFrame::Oracle(){
   fCanvas->Divide(2,2);
   GateColor->SetRGB(0.22,0.33,0.61);
   
-  TText *C = new TText(0.5,0.9,"Circuit");
+  TText *C = new TText(0.5,0.95,"Circuit");
   C->SetTextAlign(22);
   C->SetTextColor(kBlue+2);
   C->SetTextFont(22);
@@ -839,7 +892,6 @@ void MyMainFrame::Oracle(){
     
     Axis1 = new TLine(0.0,0.0,0.9,0.0);
     Axis2 = new TLine(0.0,-0.9,0.0,0.85);
-    //Axis3 = new TLine(0,0,-0.316,-0.589);
     
     latex.SetTextSize(0.06);
     latex.DrawLatex(-0.07,0.89,"|#beta#GT");
@@ -941,7 +993,6 @@ void MyMainFrame::Oracle(){
     
     Axis1 = new TLine(0.0,0.0,0.9,0.0);
     Axis2 = new TLine(0.0,-0.9,0.0,0.85);
-    //Axis3 = new TLine(0,0,-0.316,-0.589);
     
     latex.SetTextSize(0.06);
     latex.DrawLatex(-0.07,0.89,"|#beta#GT");
@@ -960,10 +1011,125 @@ void MyMainFrame::Oracle(){
     fCanvas->Update();
     break;
   case 4:
-    cout << "Four Qubits"<<endl;
-    break;
-  case (5):
-    cout << ">Four Qubits"<<endl;
+    fCanvas->cd(1);
+    
+    C->Draw();
+    
+    Circuit1 = new TLine(0.06,0.75,0.8,0.75);
+    Circuit2 = new TLine(0.06,0.55,0.8,0.55);
+    Circuit3 = new TLine(0.06,0.35,0.8,0.35);
+    Circuit4 = new TLine(0.06,0.15,0.8,0.15);
+    
+    latex.SetTextSize(0.05);
+    latex.DrawLatex(0.02,0.735,"|0#GT");
+    latex.DrawLatex(0.02,0.535,"|0#GT");
+    latex.DrawLatex(0.02,0.335,"|0#GT");
+    latex.DrawLatex(0.02,0.135,"|0#GT");
+    
+    HGate = new TPaveText(0.1,0.674,0.18,0.824);
+    HGate->SetTextAlign(22);
+    HGate->SetShadowColor(0);
+    HGate->SetTextFont(11);
+    HGate->SetTextSize(0.07);
+    HGate->SetFillColor(20);
+    HGate->AddText("H");
+    
+    HGate2 = new TPaveText(0.1,0.474,0.18,0.624);
+    HGate2->SetTextAlign(22);
+    HGate2->SetShadowColor(0);
+    HGate2->SetTextFont(11);
+    HGate2->SetTextSize(0.07);
+    HGate2->SetFillColor(20);
+    HGate2->AddText("H");
+
+    HGate3 = new TPaveText(0.1,0.274,0.18,0.424);
+    HGate3->SetTextAlign(22);
+    HGate3->SetShadowColor(0);
+    HGate3->SetTextFont(11);
+    HGate3->SetTextSize(0.07);
+    HGate3->SetFillColor(20);
+    HGate3->AddText("H");
+
+    HGate4 = new TPaveText(0.1,0.074,0.18,0.224);
+    HGate4->SetTextAlign(22);
+    HGate4->SetShadowColor(0);
+    HGate4->SetTextFont(11);
+    HGate4->SetTextSize(0.07);
+    HGate4->SetFillColor(20);
+    HGate4->AddText("H");
+
+    UfGate = new TPaveText(0.22,0.674,0.30,0.824);
+    UfGate->SetTextAlign(22);
+    UfGate->SetShadowColor(0);
+    UfGate->SetTextFont(11);
+    UfGate->SetTextSize(0.07);
+    UfGate->SetFillColor(20);
+    UfGate->AddText("Uf");
+    
+    UfGate2 = new TPaveText(0.22,0.474,0.30,0.624);
+    UfGate2->SetTextAlign(22);
+    UfGate2->SetShadowColor(0);
+    UfGate2->SetTextFont(11);
+    UfGate2->SetTextSize(0.07);
+    UfGate2->SetFillColor(20);
+    UfGate2->AddText("Uf");
+
+    UfGate3 = new TPaveText(0.22,0.274,0.30,0.424);
+    UfGate3->SetTextAlign(22);
+    UfGate3->SetShadowColor(0);
+    UfGate3->SetTextFont(11);
+    UfGate3->SetTextSize(0.07);
+    UfGate3->SetFillColor(20);
+    UfGate3->AddText("Uf");
+
+    UfGate4 = new TPaveText(0.22,0.074,0.30,0.224);
+    UfGate4->SetTextAlign(22);
+    UfGate4->SetShadowColor(0);
+    UfGate4->SetTextFont(11);
+    UfGate4->SetTextSize(0.07);
+    UfGate4->SetFillColor(20);
+    UfGate4->AddText("Uf");
+
+    Circuit1->Draw();
+    Circuit2->Draw();
+    Circuit3->Draw();
+    Circuit4->Draw();
+
+    HGate->Draw();
+    HGate2->Draw();
+    HGate3->Draw();
+    HGate4->Draw();
+
+    UfGate->Draw();
+    UfGate2->Draw();
+    UfGate3->Draw();
+    UfGate4->Draw();
+    
+    fCanvas->cd(2);
+    
+    Steps->Draw();
+    
+    fCanvas->cd(3)->Range(-1,-1,1,1);
+    
+    Axis1 = new TLine(0.0,0.0,0.9,0.0);
+    Axis2 = new TLine(0.0,-0.9,0.0,0.85);
+    
+    latex.SetTextSize(0.06);
+    latex.DrawLatex(-0.07,0.89,"|#beta#GT");
+    latex.DrawLatex(0.92,-0.02,"|#alpha#GT");
+    latex.DrawLatex(xf,yf,"U_{f}|#varphi#GT");
+    
+    Axis1->Draw();
+    Axis2->Draw();
+    BS->Draw();
+    SVector->Draw();
+    
+    fCanvas->cd(4);
+    
+    fCanvas->SetTitle("Circuit");
+    PEstados->Draw("AB");
+
+    fCanvas->Update();
     break;
   }
 
@@ -985,7 +1151,7 @@ void MyMainFrame::Diffuser(){
   fCanvas->Divide(2,2);
   GateColor->SetRGB(0.22,0.33,0.61);
   
-  TText *C = new TText(0.5,0.9,"Circuit");
+  TText *C = new TText(0.5,0.95,"Circuit");
   C->SetTextAlign(22);
   C->SetTextColor(kBlue+2);
   C->SetTextFont(22);
@@ -1144,7 +1310,6 @@ void MyMainFrame::Diffuser(){
     
     Axis1 = new TLine(0.0,0.0,0.9,0.0);
     Axis2 = new TLine(0.0,-0.9,0.0,0.85);
-    //Axis3 = new TLine(0,0,-0.316,-0.589);
     
     latex.SetTextSize(0.06);
     latex.DrawLatex(-0.07,0.89,"|#beta#GT");
@@ -1273,7 +1438,6 @@ void MyMainFrame::Diffuser(){
     
     Axis1 = new TLine(0.0,0.0,0.9,0.0);
     Axis2 = new TLine(0.0,-0.9,0.0,0.85);
-    //Axis3 = new TLine(0,0,-0.316,-0.589);
     
     latex.SetTextSize(0.06);
     latex.DrawLatex(-0.07,0.89,"|#beta#GT");
@@ -1292,24 +1456,722 @@ void MyMainFrame::Diffuser(){
     fCanvas->Update();
     break;
   case 4:
-    cout << "Four Qubits"<<endl;
+    fCanvas->cd(1);
+    
+    C->Draw();
+    
+    Circuit1 = new TLine(0.06,0.75,0.8,0.75);
+    Circuit2 = new TLine(0.06,0.55,0.8,0.55);
+    Circuit3 = new TLine(0.06,0.35,0.8,0.35);
+    Circuit4 = new TLine(0.06,0.15,0.8,0.15);
+    
+    latex.SetTextSize(0.05);
+    latex.DrawLatex(0.02,0.735,"|0#GT");
+    latex.DrawLatex(0.02,0.535,"|0#GT");
+    latex.DrawLatex(0.02,0.335,"|0#GT");
+    latex.DrawLatex(0.02,0.135,"|0#GT");
+    
+    HGate = new TPaveText(0.1,0.674,0.18,0.824);
+    HGate->SetTextAlign(22);
+    HGate->SetShadowColor(0);
+    HGate->SetTextFont(11);
+    HGate->SetTextSize(0.07);
+    HGate->SetFillColor(20);
+    HGate->AddText("H");
+    
+    HGate2 = new TPaveText(0.1,0.474,0.18,0.624);
+    HGate2->SetTextAlign(22);
+    HGate2->SetShadowColor(0);
+    HGate2->SetTextFont(11);
+    HGate2->SetTextSize(0.07);
+    HGate2->SetFillColor(20);
+    HGate2->AddText("H");
+
+    HGate3 = new TPaveText(0.1,0.274,0.18,0.424);
+    HGate3->SetTextAlign(22);
+    HGate3->SetShadowColor(0);
+    HGate3->SetTextFont(11);
+    HGate3->SetTextSize(0.07);
+    HGate3->SetFillColor(20);
+    HGate3->AddText("H");
+
+    HGate4 = new TPaveText(0.1,0.074,0.18,0.224);
+    HGate4->SetTextAlign(22);
+    HGate4->SetShadowColor(0);
+    HGate4->SetTextFont(11);
+    HGate4->SetTextSize(0.07);
+    HGate4->SetFillColor(20);
+    HGate4->AddText("H");
+
+    UfGate = new TPaveText(0.22,0.674,0.30,0.824);
+    UfGate->SetTextAlign(22);
+    UfGate->SetShadowColor(0);
+    UfGate->SetTextFont(11);
+    UfGate->SetTextSize(0.07);
+    UfGate->SetFillColor(20);
+    UfGate->AddText("Uf");
+    
+    UfGate2 = new TPaveText(0.22,0.474,0.30,0.624);
+    UfGate2->SetTextAlign(22);
+    UfGate2->SetShadowColor(0);
+    UfGate2->SetTextFont(11);
+    UfGate2->SetTextSize(0.07);
+    UfGate2->SetFillColor(20);
+    UfGate2->AddText("Uf");
+
+    UfGate3 = new TPaveText(0.22,0.274,0.30,0.424);
+    UfGate3->SetTextAlign(22);
+    UfGate3->SetShadowColor(0);
+    UfGate3->SetTextFont(11);
+    UfGate3->SetTextSize(0.07);
+    UfGate3->SetFillColor(20);
+    UfGate3->AddText("Uf");
+
+    UfGate4 = new TPaveText(0.22,0.074,0.30,0.224);
+    UfGate4->SetTextAlign(22);
+    UfGate4->SetShadowColor(0);
+    UfGate4->SetTextFont(11);
+    UfGate4->SetTextSize(0.07);
+    UfGate4->SetFillColor(20);
+    UfGate4->AddText("Uf");
+
+    
+    DifGate = new TPaveText(0.34,0.674,0.42,0.824);
+    DifGate->SetTextAlign(22);
+    DifGate->SetShadowColor(0);
+    DifGate->SetTextFont(11);
+    DifGate->SetTextSize(0.07);
+    DifGate->SetFillColor(20);
+    DifGate->AddText("D");
+    
+    DifGate2 = new TPaveText(0.34,0.474,0.42,0.624);
+    DifGate2->SetTextAlign(22);
+    DifGate2->SetShadowColor(0);
+    DifGate2->SetTextFont(11);
+    DifGate2->SetTextSize(0.07);
+    DifGate2->SetFillColor(20);
+    DifGate2->AddText("D");
+
+    DifGate3 = new TPaveText(0.34,0.274,0.42,0.424);
+    DifGate3->SetTextAlign(22);
+    DifGate3->SetShadowColor(0);
+    DifGate3->SetTextFont(11);
+    DifGate3->SetTextSize(0.07);
+    DifGate3->SetFillColor(20);
+    DifGate3->AddText("D");
+
+    DifGate4 = new TPaveText(0.34,0.074,0.42,0.224);
+    DifGate4->SetTextAlign(22);
+    DifGate4->SetShadowColor(0);
+    DifGate4->SetTextFont(11);
+    DifGate4->SetTextSize(0.07);
+    DifGate4->SetFillColor(20);
+    DifGate4->AddText("D");
+
+    Circuit1->Draw();
+    Circuit2->Draw();
+    Circuit3->Draw();
+    Circuit4->Draw();
+
+    HGate->Draw();
+    HGate2->Draw();
+    HGate3->Draw();
+    HGate4->Draw();
+
+    UfGate->Draw();
+    UfGate2->Draw();
+    UfGate3->Draw();
+    UfGate4->Draw();
+
+    DifGate->Draw();
+    DifGate2->Draw();
+    DifGate3->Draw();
+    DifGate4->Draw();
+    
+    fCanvas->cd(2);
+    
+    Steps->Draw();
+    
+    fCanvas->cd(3)->Range(-1,-1,1,1);
+    
+    Axis1 = new TLine(0.0,0.0,0.9,0.0);
+    Axis2 = new TLine(0.0,-0.9,0.0,0.85);
+    
+    latex.SetTextSize(0.06);
+    latex.DrawLatex(-0.07,0.89,"|#beta#GT");
+    latex.DrawLatex(0.92,-0.02,"|#alpha#GT");
+    latex.DrawLatex(xf,yf,"U_{f}|#varphi#GT");
+    
+    Axis1->Draw();
+    Axis2->Draw();
+    BS->Draw();
+    SVector->Draw();
+    
+    fCanvas->cd(4);
+    
+    fCanvas->SetTitle("Circuit");
+    PEstados->Draw("AB");
+
+    fCanvas->Update();
     break;
-  case (5):
-    cout << ">Four Qubits"<<endl;
-    break;
+
   }
 
   previous->Disconnect("Clicked()");
   next->Disconnect("Clicked()");
   previous->Connect("Clicked()","MyMainFrame",this,"Oracle()");
+  next->Connect("Clicked()","MyMainFrame",this,"Repeat()");
+
+}//End Diffuser
+
+//----------------------------------------------------------------------------
+
+//Begin Repeat
+
+void MyMainFrame::Repeat(){
+
+  Chrono = new TTimer(1000);
+  Chrono->Connect("Timeout()","MyMainFrame",this,"AnimR()");
+  r=1;
+  half=0;
+  //Chrono->SetCommand("AnimR()");
+  Chrono->TurnOn();
 
 }
 
-/*-------------------------------------------------------------------
----------------------------------------------------------------------
----------------------BASIC CONCEPTS FUNCTIONS------------------------
----------------------------------------------------------------------
--------------------------------------------------------------------*/
+void MyMainFrame::AnimR(){
+
+  fCanvas->Update();
+  GateColor->SetRGB(0.22,0.33,0.61);
+
+  if(half==1){
+  
+    double dif[N*N];
+    
+    for(int i; i<=(N*N); i++){
+      dif[i]=(2./N);
+      //cout<<uf[0]<<endl;
+    }
+    
+    for(int i=1; i<=N; i++){
+      
+      int x = (i-1)+(N*(i-1)); 
+      
+      dif[x]=-1+(2./N);
+      
+    }
+    
+    TMatrixT<double> Difusser(N,N,dif);
+    Difusser.Print();
+    
+    double s[N];
+    
+    for(int i; i<=N; i++){
+      
+      s[i]=i+1;
+      cout<<s[i]<<endl;
+    }
+    
+    TMatrixT<double> State(N,1,ms);
+    
+    TMatrixT<double> DResult = Difusser*State;
+    
+    double *Res = DResult.GetMatrixArray();
+    
+    for(int i; i<=N; i++){
+      
+      ms[i]=Res[i];
+      cout<<ms[i]<<endl;
+    }
+    
+    PEstados = new TGraph(N,s,Res);
+    PEstados->SetFillColor(40);
+    PEstados->SetTitle("States Amplitude");
+    
+    Steps = new TPaveText(0.2,0.1,0.8,0.9);
+    Steps->SetTextAlign(22);
+    Steps->SetShadowColor(0);
+    Steps->SetFillColor(0);
+    Steps->SetLineColor(0);
+    Steps->SetTextSize(0.05);
+    Steps->AddText("Initialize the n qubits to state |0#GT"); 
+    Steps->AddText("Apply Hadamard Gate over the n qubits:");
+    Steps->AddText("H^{#otimesn}|0#GT^{#otimesn}");
+    Steps->AddText("Apply a sign shift with the oracle U_{f} ");
+    Steps->AddText("Apply the Diffusion transform D");((TText*)Steps->GetListOfLines()->Last())->SetTextColor(kOrange+1);
+    Steps->AddText("Measure the states (qubits)");
+    
+    double xf;
+    double yf;
+    if(k<N){
+      xf=sqrt(ms[k]*ms[k]*(N-1));
+      yf=ms[k-1];
+    }
+    else{
+      xf=sqrt(ms[0]*ms[0]*(N-1));
+      yf=ms[k-1];
+    }
+    SVector = new TArrow(0.0,0.0,xf,yf,0.015,"|>");
+    SVector->SetFillColor(2);
+    SVector->SetLineColor(2);
+
+    double xinextg=0.42+0.08*r+0.08*r;
+    double xfnextg=0.5+0.08*r+0.08*r;
+    
+    switch(n){
+    case 2:
+      fCanvas->cd(1);
+    
+      DifGate = new TPaveText(xinextg,0.624,xfnextg,0.774);
+      DifGate->SetTextAlign(22);
+      DifGate->SetShadowColor(0);
+      DifGate->SetTextFont(11);
+      DifGate->SetTextSize(0.07);
+      DifGate->SetFillColor(20);
+      DifGate->AddText("D");
+      
+      DifGate2 = new TPaveText(xinextg,0.224,xfnextg,0.374);
+      DifGate2->SetTextAlign(22);
+      DifGate2->SetShadowColor(0);
+      DifGate2->SetTextFont(11);
+      DifGate2->SetTextSize(0.07);
+      DifGate2->SetFillColor(20);
+      DifGate2->AddText("D");
+      
+      DifGate->Draw();
+      DifGate2->Draw();
+      
+      fCanvas->cd(2);
+    
+      Steps->Draw();
+
+      
+      fCanvas->cd(3)->Range(-1,-1,1,1);
+      fCanvas->cd(3)->Clear();
+      
+      Axis1 = new TLine(0.0,0.0,0.9,0.0);
+      Axis2 = new TLine(0.0,-0.9,0.0,0.85);
+      //Axis3 = new TLine(0,0,-0.316,-0.589);
+      
+      latex.SetTextSize(0.06);
+      latex.DrawLatex(-0.07,0.89,"|#beta#GT");
+      latex.DrawLatex(0.92,-0.02,"|#alpha#GT");
+      latex.DrawLatex(xf+0.02,yf-0.08,"DU_{f}|#varphi#GT");
+      
+      Axis1->Draw();
+      Axis2->Draw();
+      SVector->Draw();
+      
+      fCanvas->cd(4);
+      
+      PEstados->Draw("AB");
+      
+      fCanvas->Update();
+      
+      break;
+    case 3:
+      fCanvas->cd(1);
+      
+      DifGate = new TPaveText(xinextg,0.674,xfnextg,0.824);
+      DifGate->SetTextAlign(22);
+      DifGate->SetShadowColor(0);
+      DifGate->SetTextFont(11);
+      DifGate->SetTextSize(0.07);
+      DifGate->SetFillColor(20);
+      DifGate->AddText("D");
+      
+      DifGate2 = new TPaveText(xinextg,0.424,xfnextg,0.574);
+      DifGate2->SetTextAlign(22);
+      DifGate2->SetShadowColor(0);
+      DifGate2->SetTextFont(11);
+      DifGate2->SetTextSize(0.07);
+      DifGate2->SetFillColor(20);
+      DifGate2->AddText("D");
+      
+      DifGate3 = new TPaveText(xinextg,0.174,xfnextg,0.324);
+      DifGate3->SetTextAlign(22);
+      DifGate3->SetShadowColor(0);
+      DifGate3->SetTextFont(11);
+      DifGate3->SetTextSize(0.07);
+      DifGate3->SetFillColor(20);
+      DifGate3->AddText("D");
+      
+      DifGate->Draw();
+      DifGate2->Draw();
+      DifGate3->Draw();
+      
+      fCanvas->cd(2);
+      fCanvas->cd(2)->Clear();
+      Steps->Draw();
+      
+      fCanvas->cd(3)->Range(-1,-1,1,1);
+      fCanvas->cd(3)->Clear();
+      
+      Axis1 = new TLine(0.0,0.0,0.9,0.0);
+      Axis2 = new TLine(0.0,-0.9,0.0,0.85);
+      //Axis3 = new TLine(0,0,-0.316,-0.589);
+      
+      latex.SetTextSize(0.06);
+      latex.DrawLatex(-0.07,0.89,"|#beta#GT");
+      latex.DrawLatex(0.92,-0.02,"|#alpha#GT");
+      latex.DrawLatex(xf+0.02,yf-0.08,"DU_{f}|#varphi#GT");
+      
+      Axis1->Draw();
+      Axis2->Draw();
+      SVector->Draw();
+      
+      fCanvas->cd(4);
+      
+      PEstados->Draw("AB");
+      
+      fCanvas->Update();
+      break;
+    case 4:
+      fCanvas->cd(1);
+      
+      DifGate = new TPaveText(xinextg,0.674,xfnextg,0.824);
+      DifGate->SetTextAlign(22);
+      DifGate->SetShadowColor(0);
+      DifGate->SetTextFont(11);
+      DifGate->SetTextSize(0.07);
+      DifGate->SetFillColor(20);
+      DifGate->AddText("D");
+      
+      DifGate2 = new TPaveText(xinextg,0.474,xfnextg,0.624);
+      DifGate2->SetTextAlign(22);
+      DifGate2->SetShadowColor(0);
+      DifGate2->SetTextFont(11);
+      DifGate2->SetTextSize(0.07);
+      DifGate2->SetFillColor(20);
+      DifGate2->AddText("D");
+      
+      DifGate3 = new TPaveText(xinextg,0.274,xfnextg,0.424);
+      DifGate3->SetTextAlign(22);
+      DifGate3->SetShadowColor(0);
+      DifGate3->SetTextFont(11);
+      DifGate3->SetTextSize(0.07);
+      DifGate3->SetFillColor(20);
+      DifGate3->AddText("D");
+      
+      DifGate4 = new TPaveText(xinextg,0.074,xfnextg,0.224);
+      DifGate4->SetTextAlign(22);
+      DifGate4->SetShadowColor(0);
+      DifGate4->SetTextFont(11);
+      DifGate4->SetTextSize(0.07);
+      DifGate4->SetFillColor(20);
+      DifGate4->AddText("D");
+      
+      
+      DifGate->Draw();
+      DifGate2->Draw();
+      DifGate3->Draw();
+      DifGate4->Draw();
+      
+      fCanvas->cd(2);
+      fCanvas->cd(2)->Clear();
+      Steps->Draw();
+      
+      fCanvas->cd(3)->Range(-1,-1,1,1);
+      fCanvas->cd(3)->Clear();
+      
+      Axis1 = new TLine(0.0,0.0,0.9,0.0);
+      Axis2 = new TLine(0.0,-0.9,0.0,0.85);
+      //Axis3 = new TLine(0,0,-0.316,-0.589);
+      
+      latex.SetTextSize(0.06);
+      latex.DrawLatex(-0.07,0.89,"|#beta#GT");
+      latex.DrawLatex(0.92,-0.02,"|#alpha#GT");
+      latex.DrawLatex(xf,yf,"DU_{f}|#varphi#GT");
+      
+      Axis1->Draw();
+      Axis2->Draw();
+      //BS->Draw();
+      SVector->Draw();
+      
+      fCanvas->cd(4);
+      
+      fCanvas->SetTitle("Circuit");
+      PEstados->Draw("AB");
+      
+      fCanvas->Update();
+      break;
+    }
+    half=0;
+    r=r+1;
+  }
+  else{
+    
+    double uf[N*N];
+    
+    for(int i; i<=(N*N); i++){
+      uf[i]=0.0;
+      
+      cout<<uf[0]<<endl;
+    }
+    
+    for(int i=1; i<=N; i++){
+      
+      int x = (i-1)+(N*(i-1)); 
+      
+      uf[x]=1;
+      
+      }
+    
+    int s_e = (k-1)+(N*(k-1));
+    
+    uf[s_e]=-1;
+    
+    TMatrixT<double> Uf(N,N,uf);
+    Uf.Print();
+    
+    double s[N];
+    
+    for(int i; i<=N; i++){
+      
+	s[i]=i+1;
+	cout<<s[i]<<endl;
+    }
+    
+    TMatrixT<double> State(N,1,ms);
+    
+    TMatrixT<double> OResult = Uf*State;
+    
+    double *Res = OResult.GetMatrixArray();
+    
+    for(int i; i<=N; i++){
+      
+      ms[i]=Res[i];
+      cout<<ms[i]<<endl;
+    }
+      
+    PEstados = new TGraph(N,s,Res);
+    PEstados->SetFillColor(40);
+    PEstados->SetTitle("States Amplitude");
+    
+    Steps = new TPaveText(0.2,0.1,0.8,0.9);
+    Steps->SetTextAlign(22);
+    Steps->SetShadowColor(0);
+    Steps->SetFillColor(0);
+    Steps->SetLineColor(0);
+    Steps->SetTextSize(0.05);
+    Steps->AddText("Initialize the n qubits to state |0#GT"); 
+    Steps->AddText("Apply Hadamard Gate over the n qubits:");
+    Steps->AddText("H^{#otimesn}|0#GT^{#otimesn}");
+    Steps->AddText("Apply a sign shift with the oracle U_{f} ");((TText*)Steps->GetListOfLines()->Last())->SetTextColor(kOrange+1);
+    Steps->AddText("Apply the Diffusion transform D");
+    Steps->AddText("Measure the states (qubits)");
+    
+    double xf=sqrt((N-1)*(1./N));
+    double yf=-sqrt(1./N);
+    SVector = new TArrow(0.0,0.0,xf,yf,0.015,"|>");
+    SVector->SetFillColor(2);
+    SVector->SetLineColor(2);
+    
+    double xinextg=0.42+0.16*(r-1)+0.04*r;
+    double xfnextg=0.5+0.16*(r-1)+0.04*r;
+    
+    switch(n){
+    case 2:
+      fCanvas->cd(1);
+      
+      latex.SetTextSize(0.05);
+      latex.DrawLatex(0.02,0.685,"|0#GT");
+      latex.DrawLatex(0.02,0.285,"|0#GT");
+      
+      UfGate = new TPaveText(xinextg,0.624,xfnextg,0.774);
+      UfGate->SetTextAlign(22);
+      UfGate->SetShadowColor(0);
+      UfGate->SetTextFont(11);
+      UfGate->SetTextSize(0.07);
+      UfGate->SetFillColor(20);
+      UfGate->AddText("Uf");
+      
+      UfGate2 = new TPaveText(xinextg,0.224,xfnextg,0.374);
+      UfGate2->SetTextAlign(22);
+      UfGate2->SetShadowColor(0);
+      UfGate2->SetTextFont(11);
+      UfGate2->SetTextSize(0.07);
+      UfGate2->SetFillColor(20);
+      UfGate2->AddText("Uf");
+      
+      UfGate->Draw();
+      UfGate2->Draw();
+      
+      fCanvas->cd(2);
+      
+      Steps->Draw();
+    
+      fCanvas->cd(3)->Range(-1,-1,1,1);
+    
+      Axis1 = new TLine(0.0,0.0,0.9,0.0);
+      Axis2 = new TLine(0.0,-0.9,0.0,0.85);
+      //Axis3 = new TLine(0,0,-0.316,-0.589);
+    
+      latex.SetTextSize(0.06);
+      latex.DrawLatex(-0.07,0.89,"|#beta#GT");
+      latex.DrawLatex(0.92,-0.02,"|#alpha#GT");
+      latex.DrawLatex(xf-0.03,yf-0.12,"U_{f}|#varphi#GT");
+    
+      Axis1->Draw();
+      Axis2->Draw();
+      SVector->Draw();
+    
+      fCanvas->cd(4);
+    
+      PEstados->Draw("AB");
+    
+      fCanvas->Update();
+    
+      break;
+    case 3:
+    
+      fCanvas->cd(1);
+
+      latex.SetTextSize(0.05);
+      latex.DrawLatex(0.02,0.735,"|0#GT");
+      latex.DrawLatex(0.02,0.485,"|0#GT");
+      latex.DrawLatex(0.02,0.235,"|0#GT");
+
+      UfGate = new TPaveText(xinextg,0.674,xfnextg,0.824);
+      UfGate->SetTextAlign(22);
+      UfGate->SetShadowColor(0);
+      UfGate->SetTextFont(11);
+      UfGate->SetTextSize(0.07);
+      UfGate->SetFillColor(20);
+      UfGate->AddText("Uf");
+    
+      UfGate2 = new TPaveText(xinextg,0.424,xfnextg,0.574);
+      UfGate2->SetTextAlign(22);
+      UfGate2->SetShadowColor(0);
+      UfGate2->SetTextFont(11);
+      UfGate2->SetTextSize(0.07);
+      UfGate2->SetFillColor(20);
+      UfGate2->AddText("Uf");
+
+      UfGate3 = new TPaveText(xinextg,0.174,xfnextg,0.324);
+      UfGate3->SetTextAlign(22);
+      UfGate3->SetShadowColor(0);
+      UfGate3->SetTextFont(11);
+      UfGate3->SetTextSize(0.07);
+      UfGate3->SetFillColor(20);
+      UfGate3->AddText("Uf");
+    
+      UfGate->Draw();
+      UfGate2->Draw();
+      UfGate3->Draw();
+    
+      fCanvas->cd(2);
+      fCanvas->cd(2)->Clear();
+      Steps->Draw();
+    
+      fCanvas->cd(3)->Range(-1,-1,1,1);
+      fCanvas->cd(3)->Clear();
+      
+      Axis1 = new TLine(0.0,0.0,0.9,0.0);
+      Axis2 = new TLine(0.0,-0.9,0.0,0.85);
+      //Axis3 = new TLine(0,0,-0.316,-0.589);
+    
+      latex.SetTextSize(0.06);
+      latex.DrawLatex(-0.07,0.89,"|#beta#GT");
+      latex.DrawLatex(0.92,-0.02,"|#alpha#GT");
+      latex.DrawLatex(xf-0.05,yf-0.05,"U_{f}|#varphi#GT");
+    
+      Axis1->Draw();
+      Axis2->Draw();
+      SVector->Draw();
+    
+      fCanvas->cd(4);
+    
+      PEstados->Draw("AB");
+    
+      fCanvas->Update();
+      break;
+    case 4:
+      fCanvas->cd(1);
+    
+      latex.SetTextSize(0.05);
+      latex.DrawLatex(0.02,0.735,"|0#GT");
+      latex.DrawLatex(0.02,0.535,"|0#GT");
+      latex.DrawLatex(0.02,0.335,"|0#GT");
+      latex.DrawLatex(0.02,0.135,"|0#GT");
+
+      UfGate = new TPaveText(xinextg,0.674,xfnextg,0.824);
+      UfGate->SetTextAlign(22);
+      UfGate->SetShadowColor(0);
+      UfGate->SetTextFont(11);
+      UfGate->SetTextSize(0.07);
+      UfGate->SetFillColor(20);
+      UfGate->AddText("Uf");
+    
+      UfGate2 = new TPaveText(xinextg,0.474,xfnextg,0.624);
+      UfGate2->SetTextAlign(22);
+      UfGate2->SetShadowColor(0);
+      UfGate2->SetTextFont(11);
+      UfGate2->SetTextSize(0.07);
+      UfGate2->SetFillColor(20);
+      UfGate2->AddText("Uf");
+
+      UfGate3 = new TPaveText(xinextg,0.274,xfnextg,0.424);
+      UfGate3->SetTextAlign(22);
+      UfGate3->SetShadowColor(0);
+      UfGate3->SetTextFont(11);
+      UfGate3->SetTextSize(0.07);
+      UfGate3->SetFillColor(20);
+      UfGate3->AddText("Uf");
+
+      UfGate4 = new TPaveText(xinextg,0.074,xfnextg,0.224);
+      UfGate4->SetTextAlign(22);
+      UfGate4->SetShadowColor(0);
+      UfGate4->SetTextFont(11);
+      UfGate4->SetTextSize(0.07);
+      UfGate4->SetFillColor(20);
+      UfGate4->AddText("Uf");
+
+      UfGate->Draw();
+      UfGate2->Draw();
+      UfGate3->Draw();
+      UfGate4->Draw();
+    
+      fCanvas->cd(2);
+      fCanvas->cd(2)->Clear();
+      Steps->Draw();
+    
+      fCanvas->cd(3)->Range(-1,-1,1,1);
+      fCanvas->cd(3)->Clear();
+      
+      Axis1 = new TLine(0.0,0.0,0.9,0.0);
+      Axis2 = new TLine(0.0,-0.9,0.0,0.85);
+      //Axis3 = new TLine(0,0,-0.316,-0.589);
+    
+      latex.SetTextSize(0.06);
+      latex.DrawLatex(-0.07,0.89,"|#beta#GT");
+      latex.DrawLatex(0.92,-0.02,"|#alpha#GT");
+      latex.DrawLatex(xf,yf,"U_{f}|#varphi#GT");
+    
+      Axis1->Draw();
+      Axis2->Draw();
+      SVector->Draw();
+    
+      fCanvas->cd(4);
+    
+      fCanvas->SetTitle("Circuit");
+      PEstados->Draw("AB");
+	
+      fCanvas->Update();
+      break;
+    }
+
+    half=1;
+  }
+
+  if(r==R) Chrono->TurnOff();
+}
+  
+/*-----------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+--------------------------BASIC CONCEPTS FUNCTIONS-----------------------------
+-------------------------------------------------------------------------------
+-----------------------------------------------------------------------------*/
 
 void MyMainFrame::GateConstruct(){
   fCanvas = MCanvas->GetCanvas();
@@ -1484,4 +2346,3 @@ void InterfaceG() {
   // Popup the GUI...
   new MyMainFrame(gClient->GetRoot(),800,450);
 }
-
