@@ -1,3 +1,9 @@
+/*This is an Graphical User Interface
+for the Grover's Algorithm Learning,
+this GUI is still in building process.
+Author: Daniel Martin. */
+
+
 #include <TGClient.h>
 #include <TCanvas.h>
 #include <TF1.h>
@@ -1474,7 +1480,7 @@ void MyMainFrame::RDefinition(){
 
 
 
-void InterfaceCopy() {
+void InterfaceG() {
   // Popup the GUI...
   new MyMainFrame(gClient->GetRoot(),800,450);
 }
